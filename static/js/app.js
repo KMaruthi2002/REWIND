@@ -119,6 +119,7 @@
         document.getElementById('narrative-panel').style.display = 'none';
         document.getElementById('params-panel').style.display = 'none';
         document.getElementById('timeline-panel').style.display = 'none';
+        document.getElementById('reasoning-panel').style.display = 'none';
         document.getElementById('recon-image-panel').style.display = 'none';
 
         // Build form data
@@ -208,7 +209,11 @@
                 renderer.setFrames(data.data.frames);
             }
 
-            if (data.stage === 'visualization' && data.data.image_url) {
+            if (data.stage === 'deep_reasoning' && data.data.refined_analysis) {
+                showReasoning(data.data.refined_analysis);
+            }
+
+            if (data.stage === 'visualization' && data.data && data.data.image_url) {
                 showReconImage(data.data.image_url);
             }
         }
@@ -261,6 +266,19 @@
                 list.appendChild(item);
             });
         }
+    }
+
+    function showReasoning(reasoning) {
+        if (!reasoning) return;
+        document.getElementById('reasoning-panel').style.display = 'block';
+        const el = document.getElementById('reasoning-content');
+        // Simple markdown-ish rendering: bold, headers, line breaks
+        let html = reasoning
+            .replace(/### (.+)/g, '<h4>$1</h4>')
+            .replace(/## (.+)/g, '<h3 class="reasoning-h3">$1</h3>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+        el.innerHTML = html;
     }
 
     function showReconImage(imageUrl) {

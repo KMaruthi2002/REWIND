@@ -9,6 +9,12 @@
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
 <body>
+    {% if demo_mode %}
+    <div class="demo-banner">
+        <span class="demo-pulse"></span> DEMO MODE - Using simulated Meta AI responses. Add your API key for live analysis.
+    </div>
+    {% endif %}
+
     <!-- Hero / Upload Screen -->
     <div id="screen-upload" class="screen active">
         <div class="hero">
@@ -140,6 +146,12 @@
                 <div class="panel" id="timeline-panel" style="display:none;">
                     <h3 class="panel-title">Event Timeline</h3>
                     <div id="timeline-content" class="timeline-list"></div>
+                </div>
+
+                <!-- Deep Reasoning -->
+                <div class="panel" id="reasoning-panel" style="display:none;">
+                    <h3 class="panel-title">Deep Causal Analysis <span class="model-tag">Muse Wonder</span></h3>
+                    <div id="reasoning-content" class="reasoning-text"></div>
                 </div>
 
                 <!-- Reconstruction Image -->

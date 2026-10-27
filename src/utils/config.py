@@ -7,8 +7,8 @@ load_dotenv()
 
 
 class Config:
-    # Meta Model API
-    META_API_KEY = os.getenv("META_API_KEY", "")
+    # Meta Model API - check both env var names
+    META_API_KEY = os.getenv("META_MODEL_API_KEY", os.getenv("META_API_KEY", ""))
     META_API_BASE = "https://api.meta.ai/v1"
 
     # Model IDs
@@ -21,6 +21,12 @@ class Config:
     UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads")
     MAX_UPLOAD_SIZE = 20 * 1024 * 1024  # 20MB
     ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".mp4", ".mov"}
+    ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+    # Demo mode activates automatically when no API key is set
+    @classmethod
+    def is_demo_mode(cls):
+        return not bool(cls.META_API_KEY) or cls.META_API_KEY.startswith("your_")
 
     @classmethod
     def ensure_dirs(cls):
