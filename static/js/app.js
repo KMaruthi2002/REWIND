@@ -9,6 +9,8 @@
     let fileId = null;
     let renderer = null;
     let damageType = 'auto';
+    let stagesCompleted = 0;
+    const TOTAL_STAGES = 5;
 
     // Elements
     const screenUpload = document.getElementById('screen-upload');
@@ -26,6 +28,7 @@
     const timeDisplay = document.getElementById('time-display');
     const analysisImage = document.getElementById('analysis-image');
     const overlayCanvas = document.getElementById('overlay-canvas');
+    const stageCounter = document.getElementById('stage-counter');
 
     // Upload handling
     uploadZone.addEventListener('click', () => fileInput.click());
@@ -62,7 +65,9 @@
         reader.onload = (e) => {
             previewImage.src = e.target.result;
             previewContainer.style.display = 'block';
+            previewContainer.classList.add('fade-in');
             damageTypeSelector.style.display = 'block';
+            damageTypeSelector.classList.add('fade-in');
         };
         reader.readAsDataURL(file);
 
@@ -75,6 +80,7 @@
             const data = await resp.json();
             if (!resp.ok) throw new Error(data.detail || 'Upload failed');
             fileId = data.file_id;
+            btnAnalyze.disabled = false;
         } catch (err) {
             console.error('Upload error:', err);
             alert('Upload failed: ' + err.message);
@@ -109,6 +115,10 @@
             renderer = new RewindRenderer(overlayCanvas, analysisImage);
         };
 
+        // Reset state
+        stagesCompleted = 0;
+        updateStageCounter();
+
         // Reset pipeline stages UI
         document.querySelectorAll('.stage').forEach(s => {
             s.className = 'stage';
@@ -121,6 +131,18 @@
         document.getElementById('timeline-panel').style.display = 'none';
         document.getElementById('reasoning-panel').style.display = 'none';
         document.getElementById('recon-image-panel').style.display = 'none';
+
+        // Reset playback
+        btnPlay.textContent = '▶';
+        timelineSlider.value = 0;
+        timeDisplay.textContent = 't = 0.000s';
+
+        // Reset badge
+        const badge = document.querySelector('.analysis-badge');
+        if (badge) {
+            badge.textContent = 'ANALYZING';
+            badge.classList.remove('done');
+        }
 
         // Build form data
         const formData = new FormData();
@@ -196,21 +218,31 @@
         stageEl.querySelector('.stage-status').textContent = data.status;
 
         if (data.status === 'complete' && data.data) {
+            stagesCompleted++;
+            updateStageCounter();
+
             // Process stage-specific data
             if (data.stage === 'segmentation' && data.data.segments && renderer) {
                 renderer.setSegments(data.data.segments);
+                // Flash the segments on screen
+                renderer.renderFrame(renderer.currentFrame || 0);
             }
 
             if (data.stage === 'analysis' && data.data) {
                 showAnalysis(data.data);
             }
 
-            if (data.stage === 'simulation' && data.data.frames && renderer) {
-                renderer.setFrames(data.data.frames);
-            }
-
             if (data.stage === 'deep_reasoning' && data.data.refined_analysis) {
                 showReasoning(data.data.refined_analysis);
+            }
+
+            if (data.stage === 'simulation' && data.data.frames && renderer) {
+                renderer.setFrames(data.data.frames);
+                // Auto-play the simulation
+                setTimeout(() => {
+                    renderer.play();
+                    btnPlay.textContent = '⏸';
+                }, 300);
             }
 
             if (data.stage === 'visualization' && data.data && data.data.image_url) {
@@ -219,88 +251,137 @@
         }
     }
 
+    function updateStageCounter() {
+        if (stageCounter) {
+            stageCounter.textContent = `${stagesCompleted}/${TOTAL_STAGES}`;
+        }
+    }
+
     function showAnalysis(analysis) {
         // Narrative
         const narrative = analysis.reconstruction?.narrative;
         if (narrative) {
-            document.getElementById('narrative-panel').style.display = 'block';
-            document.getElementById('narrative-content').textContent = narrative;
+            const panel = document.getElementById('narrative-panel');
+            panel.style.display = 'block';
+            panel.classList.add('panel-enter');
+            // Typewriter effect for narrative
+            typeText(document.getElementById('narrative-content'), narrative, 8);
         }
 
         // Parameters
         const params = analysis.parameters?.estimated_values;
         const units = analysis.parameters?.units || {};
         if (params && Object.keys(params).length > 0) {
-            document.getElementById('params-panel').style.display = 'block';
+            const panel = document.getElementById('params-panel');
+            panel.style.display = 'block';
+            panel.classList.add('panel-enter');
             const grid = document.getElementById('params-content');
             grid.innerHTML = '';
 
+            let delay = 0;
             for (const [key, value] of Object.entries(params)) {
                 const card = document.createElement('div');
-                card.className = 'param-card';
+                card.className = 'param-card param-animate';
+                card.style.animationDelay = `${delay}ms`;
                 const label = key.replace(/_/g, ' ');
                 const unit = units[key] || '';
                 card.innerHTML = `
                     <div class="param-label">${label}</div>
-                    <div class="param-value">${formatValue(value)}<span class="param-unit">${unit}</span></div>
+                    <div class="param-value">
+                        <span class="param-number" data-target="${value}">${formatValue(value)}</span><span class="param-unit">${unit}</span>
+                    </div>
                 `;
                 grid.appendChild(card);
+                delay += 60;
             }
         }
 
         // Timeline
         const timeline = analysis.reconstruction?.timeline;
         if (timeline && timeline.length > 0) {
-            document.getElementById('timeline-panel').style.display = 'block';
+            const panel = document.getElementById('timeline-panel');
+            panel.style.display = 'block';
+            panel.classList.add('panel-enter');
             const list = document.getElementById('timeline-content');
             list.innerHTML = '';
 
-            timeline.forEach((event, i) => {
+            let delay = 0;
+            timeline.forEach((event) => {
                 const item = document.createElement('div');
-                item.className = 'timeline-item';
+                item.className = 'timeline-item tl-animate';
+                item.style.animationDelay = `${delay}ms`;
+                const time = typeof event === 'string' ? '' : (event.time || '');
                 const desc = typeof event === 'string' ? event : event.description || event.event || JSON.stringify(event);
                 item.innerHTML = `
-                    <span class="tl-time">T+${i}</span>
+                    <span class="tl-time">${time}</span>
                     <span class="tl-desc">${desc}</span>
                 `;
                 list.appendChild(item);
+                delay += 80;
             });
         }
     }
 
     function showReasoning(reasoning) {
         if (!reasoning) return;
-        document.getElementById('reasoning-panel').style.display = 'block';
+        const panel = document.getElementById('reasoning-panel');
+        panel.style.display = 'block';
+        panel.classList.add('panel-enter');
         const el = document.getElementById('reasoning-content');
-        // Simple markdown-ish rendering: bold, headers, line breaks
+        // Simple markdown-ish rendering: bold, headers, line breaks, lists
         let html = reasoning
             .replace(/### (.+)/g, '<h4>$1</h4>')
             .replace(/## (.+)/g, '<h3 class="reasoning-h3">$1</h3>')
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^\d+\.\s/gm, '<span class="list-num">$&</span>')
+            .replace(/^- /gm, '<span class="list-bullet">• </span>')
             .replace(/\n/g, '<br>');
         el.innerHTML = html;
     }
 
     function showReconImage(imageUrl) {
         if (!imageUrl) return;
-        document.getElementById('recon-image-panel').style.display = 'block';
+        const panel = document.getElementById('recon-image-panel');
+        panel.style.display = 'block';
+        panel.classList.add('panel-enter');
         document.getElementById('recon-image').src = imageUrl;
     }
 
     function onComplete(data) {
-        // Update badge
+        // Update badge with success animation
         const badge = document.querySelector('.analysis-badge');
         if (badge) {
-            badge.textContent = 'COMPLETE';
             badge.classList.add('done');
+            if (data.processing_time_ms) {
+                const secs = (data.processing_time_ms / 1000).toFixed(1);
+                badge.textContent = `DONE in ${secs}s`;
+            } else {
+                badge.textContent = 'COMPLETE';
+            }
         }
 
-        // Show processing time
-        if (data.processing_time_ms) {
-            const secs = (data.processing_time_ms / 1000).toFixed(1);
-            const badge2 = document.querySelector('.analysis-badge');
-            if (badge2) badge2.textContent = `DONE in ${secs}s`;
+        // Show completion flash
+        const header = document.querySelector('.analysis-header');
+        if (header) {
+            header.classList.add('complete-flash');
+            setTimeout(() => header.classList.remove('complete-flash'), 1200);
         }
+    }
+
+    /**
+     * Typewriter effect for text content
+     */
+    function typeText(element, text, charsPerFrame) {
+        element.textContent = '';
+        let i = 0;
+        const interval = setInterval(() => {
+            const chunk = text.slice(i, i + charsPerFrame);
+            element.textContent += chunk;
+            i += charsPerFrame;
+            if (i >= text.length) {
+                clearInterval(interval);
+            }
+        }, 16);
     }
 
     function formatValue(v) {
