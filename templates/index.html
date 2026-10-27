@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REWIND - AI Forensic Reconstruction</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+    <!-- Hero / Upload Screen -->
+    <div id="screen-upload" class="screen active">
+        <div class="hero">
+            <div class="hero-badge">META AI HACKATHON 2026</div>
+            <h1 class="hero-title">
+                <span class="glow">REWIND</span>
+            </h1>
+            <p class="hero-subtitle">AI Forensic Reconstruction</p>
+            <p class="hero-desc">Upload a photo of damage and watch AI reverse-engineer exactly what happened using physics simulation.</p>
+
+            <div class="upload-zone" id="upload-zone">
+                <div class="upload-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <p class="upload-text">Drop a damage photo here or click to upload</p>
+                <p class="upload-hint">JPG, PNG, WebP up to 20MB</p>
+                <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" hidden>
+            </div>
+
+            <div class="damage-type-selector" id="damage-type-selector" style="display:none;">
+                <p class="selector-label">What type of damage?</p>
+                <div class="type-buttons">
+                    <button class="type-btn active" data-type="auto">
+                        <span class="type-icon">&#x1F50D;</span>
+                        Auto-Detect
+                    </button>
+                    <button class="type-btn" data-type="impact">
+                        <span class="type-icon">&#x1F4A5;</span>
+                        Impact
+                    </button>
+                    <button class="type-btn" data-type="tipping">
+                        <span class="type-icon">&#x1F4CC;</span>
+                        Tipping
+                    </button>
+                    <button class="type-btn" data-type="fluid">
+                        <span class="type-icon">&#x1F4A7;</span>
+                        Fluid
+                    </button>
+                </div>
+                <div class="option-row">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="deep-reasoning"> Deep Reasoning (Muse Wonder)
+                    </label>
+                </div>
+                <button class="btn-primary" id="btn-analyze">
+                    <span class="btn-icon">&#x25B6;</span> RECONSTRUCT
+                </button>
+            </div>
+
+            <div id="preview-container" style="display:none;">
+                <img id="preview-image" alt="Uploaded image preview">
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Screen -->
+    <div id="screen-analysis" class="screen">
+        <header class="analysis-header">
+            <button class="btn-back" id="btn-back">&#x2190; New Analysis</button>
+            <h2 class="analysis-title">REWIND <span class="analysis-badge">ANALYZING</span></h2>
+        </header>
+
+        <div class="analysis-layout">
+            <!-- Left: Original Image + Overlay Canvas -->
+            <div class="analysis-left">
+                <div class="canvas-container" id="canvas-container">
+                    <img id="analysis-image" alt="Damage image">
+                    <canvas id="overlay-canvas"></canvas>
+                    <div class="canvas-controls">
+                        <button class="ctrl-btn" id="btn-play" title="Play/Pause">&#x25B6;</button>
+                        <button class="ctrl-btn" id="btn-reset" title="Reset">&#x23EE;</button>
+                        <input type="range" id="timeline-slider" min="0" max="100" value="0" class="timeline">
+                        <span class="time-display" id="time-display">t = 0.000s</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Analysis Details -->
+            <div class="analysis-right">
+                <!-- Pipeline Progress -->
+                <div class="panel" id="pipeline-panel">
+                    <h3 class="panel-title">Pipeline</h3>
+                    <div class="pipeline-stages" id="pipeline-stages">
+                        <div class="stage" data-stage="segmentation">
+                            <span class="stage-dot"></span>
+                            <span class="stage-label">SAM 3.1 Segmentation</span>
+                            <span class="stage-status">waiting</span>
+                        </div>
+                        <div class="stage" data-stage="analysis">
+                            <span class="stage-dot"></span>
+                            <span class="stage-label">Muse Spark Analysis</span>
+                            <span class="stage-status">waiting</span>
+                        </div>
+                        <div class="stage" data-stage="deep_reasoning">
+                            <span class="stage-dot"></span>
+                            <span class="stage-label">Muse Wonder Reasoning</span>
+                            <span class="stage-status">waiting</span>
+                        </div>
+                        <div class="stage" data-stage="simulation">
+                            <span class="stage-dot"></span>
+                            <span class="stage-label">Physics Simulation</span>
+                            <span class="stage-status">waiting</span>
+                        </div>
+                        <div class="stage" data-stage="visualization">
+                            <span class="stage-dot"></span>
+                            <span class="stage-label">Muse Image Visualization</span>
+                            <span class="stage-status">waiting</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reconstruction Narrative -->
+                <div class="panel" id="narrative-panel" style="display:none;">
+                    <h3 class="panel-title">Reconstruction</h3>
+                    <div id="narrative-content" class="narrative-text"></div>
+                </div>
+
+                <!-- Physics Parameters -->
+                <div class="panel" id="params-panel" style="display:none;">
+                    <h3 class="panel-title">Physics Parameters</h3>
+                    <div id="params-content" class="params-grid"></div>
+                </div>
+
+                <!-- Timeline -->
+                <div class="panel" id="timeline-panel" style="display:none;">
+                    <h3 class="panel-title">Event Timeline</h3>
+                    <div id="timeline-content" class="timeline-list"></div>
+                </div>
+
+                <!-- Reconstruction Image -->
+                <div class="panel" id="recon-image-panel" style="display:none;">
+                    <h3 class="panel-title">AI Reconstruction</h3>
+                    <img id="recon-image" class="recon-image" alt="AI-generated reconstruction">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/renderer.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
