@@ -27,10 +27,10 @@ Every stage streams progress via SSE, so you watch the analysis unfold live.
 **No API key needed to try it.** REWIND ships with a full demo mode that returns realistic pre-built analysis with simulated delays, so you can experience the complete flow immediately.
 
 ```bash
-git clone https://github.com/MKunchala/rewind.git
-cd rewind
-pip install -r requirements.txt
-python app.py
+git clone https://github.com/KMaruthi2002/REWIND.git
+cd REWIND
+pip3 install -r requirements.txt
+python3 app.py
 # Open http://localhost:8000
 ```
 
