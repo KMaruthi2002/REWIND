@@ -9,6 +9,38 @@ from typing import Optional
 from src.utils.config import Config
 
 
+_ANALYSIS_DICT_FIELDS = (
+    "physics_analysis",
+    "reconstruction",
+    "parameters",
+    "visualization_hints",
+)
+
+
+def parse_analysis_text(output_text: str) -> dict:
+    """Parse the JSON analysis returned by Muse Spark.
+
+    Raises ValueError when no JSON object can be recovered, so callers report
+    a failed stage instead of treating an empty analysis as a success. Fields
+    that must be objects are coerced to ``{}`` when the model returns another
+    type, which keeps ``analysis.get("reconstruction", {}).get(...)`` safe.
+    """
+    json_start = output_text.find("{")
+    json_end = output_text.rfind("}") + 1
+    if json_start < 0 or json_end <= json_start:
+        raise ValueError("Analysis response contained no JSON object")
+    try:
+        analysis = json.loads(output_text[json_start:json_end])
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Analysis response was not valid JSON: {e.msg}") from e
+    if not isinstance(analysis, dict):
+        raise ValueError("Analysis response JSON was not an object")
+    for key in _ANALYSIS_DICT_FIELDS:
+        if not isinstance(analysis.get(key, {}), dict):
+            analysis[key] = {}
+    return analysis
+
+
 class MetaClient:
     """Unified client for Meta Model API endpoints."""
 
@@ -120,19 +152,7 @@ Be specific with numbers and physics. Use real units and realistic estimates. Th
                     if content.get("type") == "output_text":
                         output_text = content.get("text", "")
 
-        # Parse JSON from the response
-        try:
-            # Try to extract JSON from the response
-            json_start = output_text.find("{")
-            json_end = output_text.rfind("}") + 1
-            if json_start >= 0 and json_end > json_start:
-                analysis = json.loads(output_text[json_start:json_end])
-            else:
-                analysis = {"raw_analysis": output_text, "parse_error": "No JSON found"}
-        except json.JSONDecodeError:
-            analysis = {"raw_analysis": output_text, "parse_error": "Invalid JSON"}
-
-        return analysis
+        return parse_analysis_text(output_text)
 
     async def segment_damage(self, image_path: str, prompt: str = "damage") -> dict:
         """
